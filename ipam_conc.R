@@ -5,6 +5,7 @@ library(dplyr)
 library(broom)
 library(lubridate)
 library(tidyverse)
+library(ggplot2)
 
 ipam_convert <- function(data) {
   data %>% select_if(~ !any(is.na(.))) %>%
@@ -13,7 +14,11 @@ ipam_convert <- function(data) {
 }
 
 pamfiles <- list.files(path = "PAM_data/csv", pattern = "*.csv", recursive = TRUE, full.names = TRUE)
+meta1<-read.csv(file ="fluc_bryops_metadata.csv")
 
+meta1<-meta1%>%
+  #mutate(date = as_date(date, format = "%d.%m.%y"))%>%# This line makes the date column turn NA
+  mutate(aoi = as.character(aoi))
 
 # Import data from each file
 pam1 <- pamfiles %>%
@@ -27,48 +32,21 @@ pam1 <- pam1 %>%
   filter(no == max(no)) %>%
   ungroup()
 # For each source file, convert to long form data with F, FM, and YII for each AOI
-pam1 <- pam1 %>%
-  nest(-file_id, -date) %>%
+  
+pam1<-pam1 %>%
+  nest(-file_id, -date)%>%
   mutate(data2 = map(data, ipam_convert)) %>%
   unnest(data2) %>%
   group_by(file_id, date) %>%
   select(file_id, date, time, aoi, var, value)
 
-rm(test)
+pam_met<-pam1%>%
+  full_join(meta1)
 
-Blue<-pam1%>%
-  group_by(file_id)%>%
-  filter(var == "y_ii_")%>%
-  filter(str_detect(file_id, "Blue"), ignore.case = TRUE)%>%
-  mutate(avg = mean(value))
+f1<-ggplot(pam_met, aes(x = date , y = value, color = conc))+
+  geom_point()
+f1
+#pam_met<-(pam1, meta1, )
 
-CtrlTreatment<-pam1%>%
-  group_by(file_id)%>%
-  filter(var == "y_ii_")%>%
-  filter(str_detect(file_id, "red"), ignore.case = TRUE)%>%
-  mutate(avg = mean(value))
+#caseWhen (date = 1017, aoi < 3, equals whatever color is necessary)
 
-Pink<-pam1%>%
-  group_by(file_id)%>%
-  filter(var == "y_ii_")%>%
-  filter(str_detect(file_id, "Pink"), ignore.case = TRUE)%>%
-  mutate(avg = mean(value))
-
-
-Yellow<-pam1%>%
-  group_by(file_id)%>%
-  filter(var == "y_ii_")%>%
-  filter(str_detect(file_id, "Yellow"), ignore.case = TRUE)%>%
-  mutate(avg = mean(value))
-
-Purple<-pam1%>%
-  group_by(file_id)%>%
-  filter(var == "y_ii_")%>%
-  filter(str_detect(file_id, "Purple"), ignore.case = TRUE)%>%
-  mutate(avg = mean(value))
-
-Green<-pam1%>%
-  group_by(file_id)%>%
-  filter(var == "y_ii_")%>%
-  filter(str_detect(file_id, "Green"), ignore.case = TRUE)%>%
-  mutate(avg = mean(value))
