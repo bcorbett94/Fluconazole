@@ -1,6 +1,7 @@
 library(drc)
 library(quantreg)
 library(mcr)
+library(utils)
 library(dplyr)
 library(broom)
 library(lubridate)
@@ -17,7 +18,7 @@ pamfiles <- list.files(path = "PAM_data/csv", pattern = "*.csv", recursive = TRU
 meta1<-read.csv(file ="fluc_bryops_metadata.csv")
 
 meta1<-meta1%>%
-  #mutate(date = as_date(date, format = "%d.%m.%y"))%>%# This line makes the date column turn NA
+  mutate(date = as_date(date, format= "%m/%d/%y"))%>%# This line makes the date column turn NA
   mutate(aoi = as.character(aoi))
 
 # Import data from each file
@@ -43,8 +44,18 @@ pam1<-pam1 %>%
 pam_met<-pam1%>%
   full_join(meta1)
 
-f1<-ggplot(pam_met, aes(x = date , y = value, color = conc))+
-  geom_point()
+pam_fvfm<-pam_met%>%  
+  filter(var == "y_ii_")%>%
+  group_by(tank,conc,date)%>%
+  mutate(average =mean (value))
+
+num_conc<-c(red = "0 mg/L", Yellow = "0.1 mg/L",Purple = "0.5 mg/L", Green = "1.0 mg/L", Blue = "2.5 mg/L", Pink = "5.3 mg/L")
+pam_fvfm$conc <-as.character(num_conc[pam_fvfm$conc])         
+
+f1<-ggplot(pam_fvfm, aes(x = date , y = average, group = tank, color = conc))+
+  geom_line()+
+  geom_point()+
+  facet_wrap(.~conc)
 f1
 #pam_met<-(pam1, meta1, )
 
